@@ -1,0 +1,10 @@
+annotated-types==0.8.0
+cbcbox==2.935
+cpsat-logutils==1.0.0
+numpy==2.5.3
+orloge==1.0.0
+PuLP==4.0.0
+pydantic==2.14.0
+pydantic_core==2.50.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0

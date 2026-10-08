@@ -60,8 +60,8 @@ def _simplex(
         )
 
     c_B = c[basis]
-    fo = np.hstack([c - c_B @ T[:, :-1], -(c_B @ T[:, -1])], dtype=np.float64)
-    tableau = np.vstack([T, fo])
+    of = np.hstack([c - c_B @ T[:, :-1], -(c_B @ T[:, -1])], dtype=np.float64)
+    tableau = np.vstack([T, of])
 
     while np.any(tableau[-1, :-1] < -eps):
         # Finding entering and leaving variables.
