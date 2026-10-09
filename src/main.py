@@ -3,7 +3,7 @@ import sys
 
 import numpy as np
 
-from datasets.dataset_reader import dataset_reader
+from dataset_reader import dataset_reader
 from methods.primal_dual import primal_dual
 from methods.stoer_wagner import stoer_wagner
 from problems.example import example_1, example_2
