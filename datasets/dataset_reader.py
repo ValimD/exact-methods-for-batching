@@ -4,8 +4,8 @@ import numpy as np
 def dataset_reader(file_path):
     num_nodes = 0
     num_arcs = 0
-    source = None
-    sink = None
+    sources = {}
+    sinks = {}
     arcs = []
 
     with open(file_path, "r", encoding="utf-8") as file:
@@ -21,10 +21,14 @@ def dataset_reader(file_path):
                 case "n":
                     node_id = int(tokens[1])
                     node_type = tokens[2]  # source or target(sink)
+                    if len(tokens) > 3:
+                        commodity_id = int(tokens[3])
+                    else:
+                        commodity_id = 1
                     if node_type == "s":
-                        source = node_id
+                        sources[commodity_id] = node_id
                     elif node_type == "t":
-                        sink = node_id
+                        sinks[commodity_id] = node_id
                 case "a":
                     u = int(tokens[1])
                     v = int(tokens[2])
@@ -33,15 +37,10 @@ def dataset_reader(file_path):
                 case _:
                     continue
 
-    b = np.array([c_uv for _, _, c_uv in arcs], dtype=np.float64)
-    c = np.zeros(len(arcs), dtype=np.float64)
-
     return {
         "num_nodes": num_nodes,
         "num_arcs": num_arcs,
-        "source": source,
-        "sink": sink,
+        "sources": sources,
+        "sinks": sinks,
         "arcs": arcs,
-        "b": b,
-        "c": c,
     }
