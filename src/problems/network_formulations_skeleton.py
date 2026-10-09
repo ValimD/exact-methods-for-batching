@@ -99,18 +99,24 @@ def build_max_flow(data: dict, prizes: Mapping[int, float] | None = None) -> Mod
         for position in range(k):
             for arc_index in capacity_groups[i]:
                 A[i, position * num_arcs + arc_index] += 1.0
-        c[n + i] = capacity
 
     row = m
     for position, commodity in enumerate(commodities):
         source = data["sources"][commodity]
         sink = data["sinks"][commodity]
         offset = position * num_arcs
+        premio = prizes[commodity]
 
         # Minimize negative weighted sink inflow.
-        # for i, (_, v) in enumerate(oriented_arcs):
-        #   if v == sink:
-        #        c[offset + i] = -prizes[commodity]
+        for i, (u, v) in enumerate(oriented_arcs):
+            coluna = offset + i
+            if v == sink:
+                # Add prize to the objective for flow into the sink.
+                c[coluna] -= premio
+
+            if u == sink:
+                # Add prize to the objective for flow out of the source.
+                c[coluna] += premio
 
         # Flow balance: outflow - inflow = 0.
         for node in range(1, n + 1):
@@ -124,7 +130,6 @@ def build_max_flow(data: dict, prizes: Mapping[int, float] | None = None) -> Mod
             row += 1
 
     y0 = _initial_flow_dual(prizes, m, rows)
-    c = -c
     return A, b, c, y0
 
 
