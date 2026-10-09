@@ -6,7 +6,15 @@ Model = tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
 
 def build_adjacency_matrix(data: dict) -> np.ndarray:
-    """Symmetric capacities; sum parallel edges and skip loops. IDs are 1-based."""
+    """
+    Builds a symmetric capacity matrix, summing parallel edges and ignoring loops.
+
+    # Args:
+    - data (dict): network with `num_nodes` and `arcs` (u, v, capacity). Node IDs are 1-based.
+
+    # Returns:
+    Capacity matrix `weights` (NDArray[float64]).
+    """
     n = data["num_nodes"]
     weights = np.zeros((n, n), dtype=np.float64)
     for u, v, capacity in data["arcs"]:
@@ -17,10 +25,16 @@ def build_adjacency_matrix(data: dict) -> np.ndarray:
 
 
 def build_min_cut(data: dict) -> Model:
-    """Return (A, b, c, y0) for undirected s-t min cut.
+    """
+    Builds the undirected minimum cut formulation for the first commodity.
 
-    Columns: potentials, cut variables, two surplus blocks.
-    Rows: two inequalities per edge, d_s = 0, d_t = 1."""
+    # Args:
+    - data (dict): network with `num_nodes`, `arcs`, `sources`, and `sinks`. Node IDs are 1-based.
+
+    # Returns:
+    Constraint matrix `A`, right-hand side `b`, objective coefficients `c`,
+    and initial dual vector `y0` (NDArray[float64]).
+    """
     n = data["num_nodes"]
     m = len(data["arcs"])
     commodity = next(iter(data["sources"]))
@@ -52,11 +66,20 @@ def build_min_cut(data: dict) -> Model:
     return A, b, c, y0
 
 
-def build_max_flow(data: dict, prizes: Mapping[int, float]) -> Model:
-    """Return (A, b, c, y0) for undirected multicommodity flow.
+def build_max_flow(data: dict, prizes: Mapping[int, float] | None = None) -> Model:
+    """
+    Builds the undirected multicommodity flow formulation with shared capacities.
 
-    Capacity is shared across commodities and directions.
-    Minimize negative weighted sink inflow; original maximum is -z."""
+    # Args:
+    - data (dict): network with `num_nodes`, `arcs`, `sources`, and `sinks`. Node IDs are 1-based.
+    - prizes: optional commodity weights; defaults to 1 for all.
+
+    # Returns:
+    Constraint matrix `A`, right-hand side `b`, negated objective coefficients `c`,
+    and initial dual vector `y0` (NDArray[float64]).
+    """
+    if prizes is None:
+        prizes = {commodity: 1.0 for commodity in data["sources"]}
     oriented_arcs, capacity_groups = _undirected_layout(data)
     commodities = sorted(data["sources"])
     n, m, k = data["num_nodes"], len(data["arcs"]), len(commodities)
@@ -66,14 +89,17 @@ def build_max_flow(data: dict, prizes: Mapping[int, float]) -> Model:
     A = np.zeros((rows, num_flows + m), dtype=np.float64)
     b = np.zeros(rows, dtype=np.float64)
     c = np.zeros(num_flows + m, dtype=np.float64)
+    # c = np.zeros(n + 3 * m, dtype=np.float64)
+    # c = -c
 
     # Shared capacity: total flow + slack = capacity.
-    for e, (_, _, capacity) in enumerate(data["arcs"]):
-        b[e] = capacity
-        A[e, num_flows + e] = 1.0
+    for i, (_, _, capacity) in enumerate(data["arcs"]):
+        b[i] = capacity
+        A[i, num_flows + i] = 1.0
         for position in range(k):
-            for arc_index in capacity_groups[e]:
-                A[e, position * num_arcs + arc_index] += 1.0
+            for arc_index in capacity_groups[i]:
+                A[i, position * num_arcs + arc_index] += 1.0
+        c[n + i] = capacity
 
     row = m
     for position, commodity in enumerate(commodities):
@@ -82,26 +108,36 @@ def build_max_flow(data: dict, prizes: Mapping[int, float]) -> Model:
         offset = position * num_arcs
 
         # Minimize negative weighted sink inflow.
-        for a, (_, v) in enumerate(oriented_arcs):
-            if v == sink:
-                c[offset + a] = -prizes[commodity]
+        # for i, (_, v) in enumerate(oriented_arcs):
+        #   if v == sink:
+        #        c[offset + i] = -prizes[commodity]
 
         # Flow balance: outflow - inflow = 0.
         for node in range(1, n + 1):
             if node == source or node == sink:
                 continue
-            for a, (u, v) in enumerate(oriented_arcs):
+            for i, (u, v) in enumerate(oriented_arcs):
                 if u == node:
-                    A[row, offset + a] += 1.0
+                    A[row, offset + i] += 1.0
                 if v == node:
-                    A[row, offset + a] -= 1.0
+                    A[row, offset + i] -= 1.0
             row += 1
 
     y0 = _initial_flow_dual(prizes, m, rows)
+    c = -c
     return A, b, c, y0
 
 
 def _undirected_layout(data: dict) -> tuple[list[tuple[int, int]], list[list[int]]]:
+    """
+    Expands undirected edges into pairs of directed arcs.
+
+    # Args:
+    - data (dict): network with `arcs` (u, v, capacity).
+
+    # Returns:
+    Directed arcs `oriented_arcs` and arc indices grouped by edge `capacity_groups`.
+    """
     oriented_arcs = []
     capacity_groups = []
     for e, (u, v, _) in enumerate(data["arcs"]):
@@ -114,7 +150,18 @@ def _undirected_layout(data: dict) -> tuple[list[tuple[int, int]], list[list[int
 def _initial_flow_dual(
     prizes: Mapping[int, float], num_edges: int, num_rows: int
 ) -> np.ndarray:
-    """Return a feasible initial dual point."""
+    """
+    Builds the initial dual vector for the flow formulation.
+
+    # Args:
+    - prizes (Mapping[int, float]): nonempty mapping of commodity weights.
+    - num_edges (int): number of capacity constraints.
+    - num_rows (int): total number of constraints.
+
+    # Returns:
+    Dual vector `y0` (NDArray[float64]), with capacity entries set to
+    -max(0, max(prizes.values())) and remaining entries set to zero.
+    """
     P = max(0.0, max(prizes.values()))
     y0 = np.zeros(num_rows, dtype=np.float64)
     y0[:num_edges] = -P

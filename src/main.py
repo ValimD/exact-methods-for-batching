@@ -29,27 +29,19 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--prizes",
-        type=float,
-        nargs="+",
-        help="P2 prizes by ascending commodity ID (default: all 1).",
-    )
-    parser.add_argument(
         "--max-iter", type=int, default=1000, help="Primal-dual iteration limit."
     )
     args = parser.parse_args()
 
     if args.problem != 0 and args.instance_path is None:
         parser.error("instance_path is required for problems 1 and 2.")
-    if args.prizes is not None and args.problem != 2:
-        parser.error("--prizes requires problem 2.")
     if args.max_iter < 1:
         parser.error("--max-iter must be positive.")
 
     return args
 
 
-def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1000):
+def main(problem: int, instance_path: str | None, max_iter: int = 1000):
     if problem in (1, 2):
         try:
             data = dataset_reader(instance_path)
@@ -60,15 +52,10 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
                 ):
                     raise ValueError("Min cut requires one source-sink pair.")
                 A, b, c, y0 = build_min_cut(data)
+                print(c)
             else:
-                commodities = sorted(data["sources"])
-                if prizes is None:
-                    prizes = [1.0] * len(commodities)
-                if len(prizes) != len(commodities) or not np.all(np.isfinite(prizes)):
-                    raise ValueError("Provide one finite prize per commodity.")
-                rewards = dict(zip(commodities, prizes))
-                print(f"Prizes: {rewards}")
-                A, b, c, y0 = build_max_flow(data, rewards)
+                A, b, c, y0 = build_max_flow(data)
+                print(c)
 
             x, y, z, iterations = primal_dual(A, b, c, y0, max_iter=max_iter)
             if not np.isfinite(z):
@@ -133,4 +120,4 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
 
 if __name__ == "__main__":
     args = parse_arguments()
-    main(args.problem, args.instance_path, args.prizes, args.max_iter)
+    main(args.problem, args.instance_path, args.max_iter)
