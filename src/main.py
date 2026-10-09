@@ -7,7 +7,7 @@ from dataset_reader import dataset_reader
 from methods.primal_dual import primal_dual
 from methods.stoer_wagner import stoer_wagner
 from problems.example import example_1, example_2
-from problems.network_formulations_skeleton import (
+from problems.network_formulations import (
     build_adjacency_matrix,
     build_max_flow,
     build_min_cut,
@@ -60,7 +60,6 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
                 ):
                     raise ValueError("Min cut requires one source-sink pair.")
                 A, b, c, y0 = build_min_cut(data)
-                print(c)
             else:
                 commodities = sorted(data["sources"])
                 if prizes is None:
@@ -70,7 +69,6 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
                 rewards = dict(zip(commodities, prizes))
                 print(f"Prizes: {rewards}")
                 A, b, c, y0 = build_max_flow(data, rewards)
-                print(c)
 
             x, y, z, iterations = primal_dual(A, b, c, y0, max_iter=max_iter)
             if not np.isfinite(z):

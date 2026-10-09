@@ -37,7 +37,7 @@ def build_min_cut(data: dict) -> Model:
     """
     n = data["num_nodes"]
     m = len(data["arcs"])
-    commodity = next(iter(data["sources"]))
+    commodity = next(iter(data["sources"]))  # Get the first commodity ID
     source = data["sources"][commodity]
     sink = data["sinks"][commodity]
 
@@ -89,8 +89,6 @@ def build_max_flow(data: dict, prizes: Mapping[int, float] | None = None) -> Mod
     A = np.zeros((rows, num_flows + m), dtype=np.float64)
     b = np.zeros(rows, dtype=np.float64)
     c = np.zeros(num_flows + m, dtype=np.float64)
-    # c = np.zeros(n + 3 * m, dtype=np.float64)
-    # c = -c
 
     # Shared capacity: total flow + slack = capacity.
     for i, (_, _, capacity) in enumerate(data["arcs"]):
