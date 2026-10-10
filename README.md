@@ -1,4 +1,4 @@
-# Repository Name
+# Primal Dual
 
 This repository contains an implementation of the Primal-Dual algorithm for linear optimization problems in standard form. To evaluate the algorithm, the Minimum Cut and Maximum Flow with Multiple Goods problems were used.
 
@@ -18,8 +18,8 @@ The `src` directory contains the `main.py` file, which serves as the entry point
 To run the methods, first clone the repository:
 
 ```bash
-git clone https://github.com/ValimD/exact-methods-for-batching
-cd exact-methods-for-batching
+git clone https://github.com/ValimD/primal-dual
+cd primal-dual
 ```
 
 If you are using the `mise` tool, configure the runtime environment with the following commands:
