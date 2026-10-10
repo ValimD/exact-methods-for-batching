@@ -67,7 +67,7 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
                 if len(prizes) != len(commodities) or not np.all(np.isfinite(prizes)):
                     raise ValueError("Provide one finite prize per commodity.")
                 rewards = dict(zip(commodities, prizes))
-                print(f"Prizes: {rewards}")
+                #print(f"Prizes: {rewards}")
                 A, b, c, y0 = build_max_flow(data, rewards)
 
             x, y, z, iterations = primal_dual(A, b, c, y0, max_iter=max_iter)
@@ -77,14 +77,14 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
                 z = -z
                 y = -y
             print(f"Primal-dual: objective={z}, iterations={iterations}")
-            print(
-                "Nonzero primal variables (column IDs):",
-                {i: float(value) for i, value in enumerate(x) if abs(value) > 1e-9},
-            )
-            print(
-                "Nonzero dual variables (row IDs):",
-                {i: float(value) for i, value in enumerate(y) if abs(value) > 1e-9},
-            )
+            #print(
+            #    "Nonzero primal variables (column IDs):",
+            #    {i: float(value) for i, value in enumerate(x) if abs(value) > 1e-9},
+            #)
+            #print(
+            #    "Nonzero dual variables (row IDs):",
+            #    {i: float(value) for i, value in enumerate(y) if abs(value) > 1e-9},
+            #)
 
             if problem == 1:
                 weights = build_adjacency_matrix(data)
