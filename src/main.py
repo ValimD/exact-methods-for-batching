@@ -1,10 +1,13 @@
 import argparse
 import sys
+from time import perf_counter
 
 import numpy as np
+import pulp
 
 from dataset_reader import dataset_reader
 from methods.primal_dual import primal_dual
+from methods.pulp import build_problem
 from methods.stoer_wagner import stoer_wagner
 from problems.example import example_1, example_2
 from problems.network_formulations import (
@@ -67,29 +70,79 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
                 if len(prizes) != len(commodities) or not np.all(np.isfinite(prizes)):
                     raise ValueError("Provide one finite prize per commodity.")
                 rewards = dict(zip(commodities, prizes))
-                #print(f"Prizes: {rewards}")
                 A, b, c, y0 = build_max_flow(data, rewards)
 
+            start = perf_counter()
             x, y, z, iterations = primal_dual(A, b, c, y0, max_iter=max_iter)
+            end = perf_counter()
+
             if not np.isfinite(z):
                 raise ValueError("No convergence; increase --max-iter.")
             if problem == 2:
                 z = -z
                 y = -y
-            print(f"Primal-dual: objective={z}, iterations={iterations}")
-            #print(
-            #    "Nonzero primal variables (column IDs):",
-            #    {i: float(value) for i, value in enumerate(x) if abs(value) > 1e-9},
-            #)
-            #print(
-            #    "Nonzero dual variables (row IDs):",
-            #    {i: float(value) for i, value in enumerate(y) if abs(value) > 1e-9},
-            #)
 
+            print("=== Primal-Dual ===")
+            print(f"Objective={z}, iterations={iterations}")
+            print(f"Execution time: {(end - start):.6f}s\n")
+            print(
+                "Nonzero primal variables (column IDs):\n",
+                {i: float(value) for i, value in enumerate(x) if abs(value) > 1e-9},
+            )
+            print(
+                "Nonzero dual variables (row IDs):\n",
+                {i: float(value) for i, value in enumerate(y) if abs(value) > 1e-9},
+            )
+
+            # PuLP.
+            prob = build_problem(A, b, c)
+
+            start = perf_counter()
+            stats = prob.solve(pulp.COIN_CMD(msg=False))
+            end = perf_counter()
+
+            z = pulp.value(prob.objective)
+            if problem == 2 and z is not None:
+                z = -z
+
+            print("\n\n=== PuLP ===")
+            print(f"Objective={z}, status={stats.status_str}")
+            print(f"Execution time: {(end - start):.6f}s\n")
+
+            x_pulp = {}
+            for v in prob.variables():
+                j = int(v.name.split("_")[-1])
+                if v.varValue is not None and abs(v.varValue) > 1e-9:
+                    x_pulp[j] = float(v.varValue)
+
+            print(
+                "Nonzero primal variables (column IDs):\n", dict(sorted(x_pulp.items()))
+            )
+
+            cons = prob.constraints()
+            cons = list(cons.values()) if isinstance(cons, dict) else list(cons)
+
+            y_pulp = {}
+            for i, con in enumerate(cons):
+                if con.pi is not None and abs(con.pi) > 1e-9:
+                    if problem == 1:
+                        y_pulp[i] = float(con.pi)
+                    else:
+                        y_pulp[i] = -float(con.pi)
+
+            print("Nonzero dual variables (row IDs):\n", dict(sorted(y_pulp.items())))
+
+            # Stoer-Wagner - Min Cut.
             if problem == 1:
                 weights = build_adjacency_matrix(data)
+
+                start = perf_counter()
                 cut, group = stoer_wagner(weights)
-                print(f"Stoer-Wagner: global cut={cut}")
+                end = perf_counter()
+
+                print("\n\n=== Stoer-Wagner ===")
+                print(f"Global cut={cut}")
+                print(f"Execution time: {(end - start):.6f}s")
                 print("Cut side (node IDs):", sorted(v + 1 for v in group))
                 print("Global and s-t cuts may differ.")
         except (OSError, ValueError, KeyError, IndexError, np.linalg.LinAlgError) as e:
@@ -105,14 +158,23 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
 
         A, b, c, y = example_1()
         try:
-            x, y, z, iter = primal_dual(A, b, c, y)
+            start = perf_counter()
+            x, y, z, iterations = primal_dual(A, b, c, y)
+            end = perf_counter()
         except ValueError as e:
             print(e)
             sys.exit(1)
 
-        print(f"Iterations: {iter}")
-        print(f"Objective: {z}")
-        print(f"Primal: {x}; dual: {y}\n\n")
+        print(f"Objective={z}, iterations={iterations}")
+        print(f"Execution time: {(end - start):.6f}s\n")
+        print(
+            "Nonzero primal variables (column IDs):\n",
+            {i: float(value) for i, value in enumerate(x) if abs(value) > 1e-9},
+        )
+        print(
+            "Nonzero dual variables (row IDs):\n",
+            {i: float(value) for i, value in enumerate(y) if abs(value) > 1e-9},
+        )
 
         # Second example.
         print(
@@ -121,14 +183,23 @@ def main(problem: int, instance_path: str | None, prizes=None, max_iter: int = 1
 
         A, b, c, y = example_2()
         try:
-            x, y, z, iter = primal_dual(A, b, c, y)
+            start = perf_counter()
+            x, y, z, iterations = primal_dual(A, b, c, y)
+            end = perf_counter()
         except ValueError as e:
             print(e)
             sys.exit(1)
 
-        print(f"Iterations: {iter}")
-        print(f"Objective: {z}")
-        print(f"Primal: {x}; dual: {y}")
+        print(f"Objective={z}, iterations={iterations}")
+        print(f"Execution time: {(end - start):.6f}s\n")
+        print(
+            "Nonzero primal variables (column IDs):\n",
+            {i: float(value) for i, value in enumerate(x) if abs(value) > 1e-9},
+        )
+        print(
+            "Nonzero dual variables (row IDs):\n",
+            {i: float(value) for i, value in enumerate(y) if abs(value) > 1e-9},
+        )
 
 
 if __name__ == "__main__":

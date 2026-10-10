@@ -1,6 +1,3 @@
-import numpy as np
-
-
 def dataset_reader(file_path):
     num_nodes = 0
     num_arcs = 0
@@ -13,6 +10,7 @@ def dataset_reader(file_path):
             if l.startswith("c") or not l.split():
                 continue
             tokens = l.split()
+
             # tokens[0] -> token type
             match tokens[0]:
                 case "p":

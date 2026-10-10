@@ -25,8 +25,9 @@ executar_instancia() {
 
     # A main imprime: Primal-dual: objective=33.0, iterations=...
     # Separar pelos sinais de igual e pelas vírgulas para obter o objetivo.
-    valor_objetivo=$(echo "$resultado" | awk -F '[=,]' \
-        '/^Primal-dual: objective=/ {print $2; exit}')
+    valor_objetivo=$(echo "$resultado" | awk -F '[=,]' '
+        /^=== Primal-Dual ===/ {achou=1; next}
+        achou && /^Objective=/ {print $2; exit}')
 
     # Salvar somente o nome do dataset, sem o caminho da pasta.
     nome_instancia=$(basename "$arquivo_dataset")
